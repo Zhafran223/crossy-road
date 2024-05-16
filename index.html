@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en"> 
+ <head> 
+  <meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Crossy Road Game</title> 
+  <style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        text-align: center; /* Menengahkan tombol */
+    }
+    canvas {
+        display: block;
+        background-color: #4CAF50;
+        margin: auto;
+    }
+    .control-btn {
+        font-size: 20px;
+        margin: 10px;
+        padding: 10px 20px; /* Memperbesar tombol */
+    }
+    #score {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 24px;
+        color: white;
+    }
+</style> 
+ </head> 
+ <body> 
+  <canvas id="gameCanvas" width="400" height="600"></canvas> 
+  <div id="score">
+    Score: 0 
+  </div> <button id="restartBtn" style="display:none;">Restart</button> <button id="moveLeftBtn" class="control-btn">Left</button> <button id="moveRightBtn" class="control-btn">Right</button> 
+  <script>
+    var canvas = document.getElementById("gameCanvas");
+    var ctx = canvas.getContext("2d");
+    var score = 0;
+
+    // Objek player
+    var player = {
+        x: canvas.width / 2,
+        y: canvas.height - 45,
+        width: 45,
+        height: 45,
+        color: "#FFFFFF",
+        alive: true,
+        draw: function () {
+            // Gambar lingkaran sebagai wajah
+            ctx.beginPath();
+            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.closePath();
+
+            // Gambar mata
+            ctx.beginPath();
+            ctx.arc(this.x + this.width / 3, this.y + this.height / 3, 3, 0, Math.PI * 2);
+            ctx.arc(this.x + 2 * this.width / 3, this.y + this.height / 3, 3, 0, Math.PI * 2);
+            ctx.fillStyle = "#000000";
+            ctx.fill();
+            ctx.closePath();
+
+            // Gambar mulut
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width / 4, this.y + 2 * this.height / 3);
+            ctx.quadraticCurveTo(this.x + this.width / 2, this.y + this.height, this.x + 3 * this.width / 4, this.y + 2 * this.height / 3);
+            ctx.strokeStyle = "#000000";
+            ctx.stroke();
+            ctx.closePath();
+        },
+        die: function () {
+            this.alive = false;
+            document.getElementById("restartBtn").style.display = "block";
+            alert("Kamu menabrak rintangan! Mohon coba lagi :P");
+        }
+    };
+
+    // Array untuk menyimpan rintangan
+    var obstacles = [];
+
+    // Fungsi untuk membuat rintangan acak
+    function createObstacle() {
+        var obstacleWidth = Math.random() * 100 + 20;
+        var obstacleHeight = 20;
+        var obstacleX = Math.random() * (canvas.width - obstacleWidth);
+        var obstacleY = -obstacleHeight;
+        obstacles.push({ x: obstacleX, y: obstacleY, width: obstacleWidth, height: obstacleHeight });
+    }
+
+    // Fungsi untuk menggambar rintangan
+    function drawObstacles() {
+        for (var i = 0; i < obstacles.length; i++) {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height);
+        }
+    }
+
+    // Fungsi untuk mengupdate posisi rintangan
+    function updateObstacles() {
+        for (var i = 0; i < obstacles.length; i++) {
+            obstacles[i].y += 2; // Kecepatan rintangan
+            // Hapus rintangan jika sudah di luar layar
+            if (obstacles[i].y > canvas.height) {
+                obstacles.splice(i, 1);
+                score++; // Tambah skor setiap kali melewati rintangan
+                updateScore();
+            }
+        }
+    }
+
+    // Fungsi untuk mengupdate posisi player
+    function movePlayer(direction) {
+        if (player.alive) {
+            if (direction === "left" && player.x > 0) {
+                player.x -= 20;
+            } else if (direction === "right" && player.x < canvas.width - player.width) {
+                player.x += 20;
+            }
+        }
+    }
+
+    // Fungsi untuk memulai permainan
+    function startGame() {
+        setInterval(function () {
+            createObstacle();
+        }, 1000); // Interval antara munculnya rintangan
+
+        document.addEventListener("keydown", function (event) {
+            if (player.alive) {
+                if (event.key === "ArrowLeft") {
+                    movePlayer("left");
+                } else if (event.key === "ArrowRight") {
+                    movePlayer("right");
+                }
+            }
+        });
+
+        gameLoop();
+    }
+
+    // Fungsi untuk mengecek tabrakan antara player dan rintangan
+    function checkCollision() {
+        for (var i = 0; i < obstacles.length; i++) {
+            var obstacle = obstacles[i];
+            if (
+                player.x < obstacle.x + obstacle.width &&
+                player.x + player.width > obstacle.x &&
+                player.y < obstacle.y + obstacle.height &&
+                player.y + player.height > obstacle.y
+            ) {
+                player.die();
+            }
+        }
+    }
+
+    // Fungsi untuk menggambar ulang layar game
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        player.draw();
+        drawObstacles();
+    }
+
+    // Fungsi untuk update game
+    function update() {
+        if (player.alive) {
+            updateObstacles();
+            checkCollision();
+        }
+        draw();
+    }
+
+    // Main game loop
+    function gameLoop() {
+        update();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Fungsi untuk merestart permainan
+    function restartGame() {
+        player.alive = true;
+        player.x = canvas.width / 2;
+        player.y = canvas.height - 45;
+        obstacles = [];
+        score = 0;
+        updateScore();
+        document.getElementById("restartBtn").style.display = "none";
+    }
+
+    // Fungsi untuk mengupdate skor
+    function updateScore() {
+        document.getElementById("score").textContent = "Score: " + score;
+    }
+
+    // Memulai permainan
+    startGame();
+
+    // Event listener untuk tombol restart
+    document.getElementById("restartBtn").addEventListener("click", function() {
+        restartGame();
+    });
+
+    // Event listener untuk tombol gerak ke kiri
+    document.getElementById("moveLeftBtn").addEventListener("click", function() {
+        movePlayer("left");
+    });
+
+    // Event listener untuk tombol gerak ke kanan
+    document.getElementById("moveRightBtn").addEventListener("click", function() {
+        movePlayer("right");
+    });
+</script> 
+ </body>
+</html>
